@@ -1,7 +1,7 @@
 // src/pages/Product.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { products } from '../data/mockData';
+// ВИДАЛИЛИ: import { products } from '../data/mockData';
 
 const categoryNames = {
     cosmetics: "Косметика та парфумерія",
@@ -11,47 +11,68 @@ const categoryNames = {
 };
 
 const Product = () => {
-    // Дістаємо ID з URL (наприклад /product/3 -> id = "3")
     const { id } = useParams();
     
-    // Шукаємо товар у базі
-    const product = products.find(p => p.id === parseInt(id));
+    // Стани для роботи з бекендом
+    const [product, setProduct] = useState(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
     
-    // Стан для показу сповіщення
     const [toastMessage, setToastMessage] = useState('');
 
-    // Якщо хтось ввів неправильний ID в URL
-    if (!product) {
-        return (
-            <div style={{ padding: '40px', textAlign: 'center' }}>
-                <h1>Товар не знайдено</h1>
-                <Link to="/catalog">Повернутися до каталогу</Link>
-            </div>
-        );
-    }
+    useEffect(() => {
+        const fetchSingleProduct = async () => {
+            try {
+                setIsLoading(true);
+                // Просимо в бекенда конкретний товар
+                const response = await fetch(`http://localhost:3001/api/products/${id}`);
+                
+                if (!response.ok) {
+                    throw new Error('Товар не знайдено');
+                }
+                
+                const data = await response.json();
+                setProduct(data);
+                setIsLoading(false);
+            } catch (err) {
+                setError(err.message);
+                setIsLoading(false);
+            }
+        };
+
+        fetchSingleProduct();
+    }, [id]); // Запит відбудеться знову, якщо зміниться id в URL
 
     const handleAddToCart = () => {
-        // Читаємо поточний кошик
+        if (!product) return;
+        
         let cart = JSON.parse(localStorage.getItem('cart')) || [];
         const existingProductIndex = cart.findIndex(item => item.id === product.id);
 
-        // Якщо товар вже є - збільшуємо кількість, якщо ні - додаємо новий
         if (existingProductIndex > -1) {
             cart[existingProductIndex].quantity += 1;
         } else {
             cart.push({ id: product.id, quantity: 1 });
         }
 
-        // Зберігаємо назад
         localStorage.setItem('cart', JSON.stringify(cart));
-
-        // Відправляємо сигнал, щоб Header оновив цифру
         window.dispatchEvent(new Event('cartUpdated'));
 
-        // Показуємо сповіщення
         setToastMessage(`${product.name} додано в кошик!`);
-        setTimeout(() => setToastMessage(''), 3000); // Ховаємо через 3 секунди
+        setTimeout(() => setToastMessage(''), 3000);
     };
+
+    // Рендеримо різні стани: лоадер, помилку або саму сторінку
+    if (isLoading) return <div style={{ padding: '40px', textAlign: 'center' }}>Завантаження...</div>;
+    
+    if (error || !product) {
+        return (
+            <div style={{ padding: '40px', textAlign: 'center' }}>
+                <h1>{error || "Товар не знайдено"}</h1>
+                <Link to="/catalog">Повернутися до каталогу</Link>
+            </div>
+        );
+    }
 
     return (
         <div style={{ padding: '40px' }}>
@@ -67,7 +88,6 @@ const Product = () => {
 
             <div className="product-page" style={{ padding: '20px 0' }}>
                 <div className="product-image-container">
-                    {/* Додаємо слеш, щоб картинка вантажилась від кореня сайту */}
                     <img src={`/${product.image}`} alt={product.name} />
                 </div>
                 <div className="product-info">
@@ -80,7 +100,6 @@ const Product = () => {
                 </div>
             </div>
 
-            {/* Контейнер для сповіщення (Toast) */}
             <div id="toast-container">
                 <div className={`toast ${toastMessage ? 'show' : ''}`}>
                     {toastMessage}

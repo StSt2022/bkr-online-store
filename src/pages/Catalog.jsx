@@ -1,10 +1,9 @@
 // src/pages/Catalog.jsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { products } from '../data/mockData';
 import ProductCard from '../components/ProductCard/ProductCard';
+// ВИДАЛИЛИ: import { products } from '../data/mockData';
 
-// Об'єкт з даними категорій (перенесли з твого старого JS)
 const categoryData = {
     cleaning: { name: "Засоби для прибирання", colorClass: "category-cleaning" },
     cosmetics: { name: "Косметика та парфумерія", colorClass: "category-cosmetics" },
@@ -13,14 +12,37 @@ const categoryData = {
 };
 
 const Catalog = () => {
-    // Читаємо параметр category з URL
     const [searchParams] = useSearchParams();
     const categoryQuery = searchParams.get('category');
 
-    // Визначаємо поточну категорію (або дефолтну, якщо це загальний каталог)
+    // Нові стани для роботи з бекендом
+    const [products, setProducts] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState(null);
+
     const currentCategoryInfo = categoryData[categoryQuery] || { name: "Каталог товарів", colorClass: "category-default" };
 
-    // Фільтруємо товари
+    // Звертаємося до бекенду при завантаженні сторінки
+    useEffect(() => {
+        const fetchProducts = async () => {
+            try {
+                // Робимо запит на наш бекенд
+                const response = await fetch('http://localhost:3001/api/products');
+                if (!response.ok) throw new Error('Помилка при завантаженні товарів');
+                
+                const data = await response.json();
+                setProducts(data); // Зберігаємо отримані товари
+                setIsLoading(false); // Вимикаємо лоадер
+            } catch (err) {
+                setError(err.message);
+                setIsLoading(false);
+            }
+        };
+
+        fetchProducts();
+    }, []); // Порожній масив означає, що запит відбудеться 1 раз при відкритті сторінки
+
+    // Фільтруємо вже ОТРИМАНІ з бекенду товари
     const filteredProducts = categoryQuery
         ? products.filter(p => p.category === categoryQuery)
         : products;
@@ -35,16 +57,22 @@ const Catalog = () => {
             
             <h1>{currentCategoryInfo.name}</h1>
             
-            <div className="product-grid">
-                {filteredProducts.length > 0 ? (
-                    // Магія React: перебираємо масив і для кожного товару малюємо картку
-                    filteredProducts.map(product => (
-                        <ProductCard key={product.id} product={product} />
-                    ))
-                ) : (
-                    <p>На жаль, у цій категорії товарів ще немає.</p>
-                )}
-            </div>
+            {/* Показуємо лоадер або помилку, якщо щось пішло не так */}
+            {isLoading && <p>Завантаження товарів...</p>}
+            {error && <p style={{ color: 'red' }}>{error}</p>}
+            
+            {/* Показуємо товари тільки коли вони завантажились і немає помилок */}
+            {!isLoading && !error && (
+                <div className="product-grid">
+                    {filteredProducts.length > 0 ? (
+                        filteredProducts.map(product => (
+                            <ProductCard key={product.id} product={product} />
+                        ))
+                    ) : (
+                        <p>На жаль, у цій категорії товарів ще немає.</p>
+                    )}
+                </div>
+            )}
         </div>
     );
 };
