@@ -1,22 +1,22 @@
 // src/components/Header/Header.jsx
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useContext } from 'react'; // Додали useContext
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { products } from '../../data/mockData';
+import { AuthContext } from '../../context/AuthContext'; // Імпорт вже є
 
 const Header = () => {
+    // 1. ДІСТАЄМО ЮЗЕРА ТА ФУНКЦІЮ ВИХОДУ
+    const { user, logout } = useContext(AuthContext);
+
     const [cartCount, setCartCount] = useState(0);
-    
-    // Стан для мобільного меню
     const [isMenuOpen, setIsMenuOpen] = useState(false);
-    
-    // Стан для пошуку
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [isSearchVisible, setIsSearchVisible] = useState(false);
     
     const navigate = useNavigate();
     const location = useLocation();
-    const searchRef = useRef(null); // Щоб знати, де знаходиться пошук (для кліку повз)
+    const searchRef = useRef(null);
 
     // --- Логіка Кошика ---
     const updateCount = () => {
@@ -31,15 +31,12 @@ const Header = () => {
         return () => window.removeEventListener('cartUpdated', updateCount);
     }, []);
 
-    // --- Логіка Закриття меню при переході ---
-    // Коли змінюється URL (location.pathname), меню і пошук закриваються
     useEffect(() => {
         setIsMenuOpen(false);
         setIsSearchVisible(false);
         setSearchQuery('');
     }, [location.pathname]);
 
-    // --- Логіка Кліку повз пошук ---
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (searchRef.current && !searchRef.current.contains(event.target)) {
@@ -50,11 +47,9 @@ const Header = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // --- Обробка вводу в пошук ---
     const handleSearchInput = (e) => {
         const query = e.target.value;
         setSearchQuery(query);
-
         if (query.trim().length >= 2) {
             const results = products.filter(product =>
                 product.name.toLowerCase().includes(query.trim().toLowerCase())
@@ -66,7 +61,6 @@ const Header = () => {
         }
     };
 
-    // --- Обробка натискання Enter / Кнопки пошуку ---
     const handleSearchSubmit = (e) => {
         e.preventDefault();
         if (searchQuery.trim().length > 0) {
@@ -79,7 +73,6 @@ const Header = () => {
         <header>
             <Link to="/" className="logo">СЯЙВО</Link>
             
-            {/* Додали ref сюди, щоб відстежувати кліки */}
             <div className="search-container" ref={searchRef}>
                 <form className="search-bar-top" onSubmit={handleSearchSubmit}>
                     <input 
@@ -95,7 +88,6 @@ const Header = () => {
                     </button>
                 </form>
 
-                {/* Живий пошук (випадаючий список) */}
                 {isSearchVisible && (
                     <div className="search-results-list" style={{ display: 'block' }}>
                         {searchResults.length > 0 ? (
@@ -116,7 +108,6 @@ const Header = () => {
             </div>
             
             <div className="mobile-menu-container">
-                {/* Кнопка Бургер-меню */}
                 <button 
                     className="burger-menu" 
                     onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -125,11 +116,26 @@ const Header = () => {
                     <img src={isMenuOpen ? "/images/close.png" : "/images/menu.png"} alt="Menu" />
                 </button>
 
-                {/* Якщо isMenuOpen === true, додається клас 'is-active' */}
                 <nav className={`user-menu ${isMenuOpen ? 'is-active' : ''}`}>
-                    <Link to="/profile">
-                        <img src="/images/user.png" alt="User" /> Профіль
-                    </Link>
+                    {/* 2. НОВА ЛОГІКА ДЛЯ ПРОФІЛЮ / ВХОДУ */}
+                    {user ? (
+                        <>
+                            <Link to="/profile">
+                                <img src="/images/user.png" alt="User" /> {user.firstName}
+                            </Link>
+                            <span 
+                                onClick={logout} 
+                                style={{ cursor: 'pointer', marginLeft: '15px', color: '#888', fontSize: '14px', alignSelf: 'center' }}
+                            >
+                                Вийти
+                            </span>
+                        </>
+                    ) : (
+                        <Link to="/auth">
+                            <img src="/images/user.png" alt="User" /> Увійти
+                        </Link>
+                    )}
+
                     <Link to="/cart">
                         <img src="/images/shopping-bag.png" alt="Cart" /> Кошик {cartCount > 0 && `(${cartCount})`}
                     </Link>

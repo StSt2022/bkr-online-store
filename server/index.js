@@ -20,6 +20,9 @@ mongoose.connect(process.env.MONGO_URI)
 const productRoutes = require('./routes/products');
 app.use('/api/products', productRoutes);
 
+const authRoutes = require('./routes/auth');
+app.use('/api/auth', authRoutes);           
+
 // Запуск сервера
 app.listen(PORT, () => {
     console.log(`🚀 Сервер запущено на порту ${PORT}`);
