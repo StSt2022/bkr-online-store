@@ -21,7 +21,13 @@ const productRoutes = require('./routes/products');
 app.use('/api/products', productRoutes);
 
 const authRoutes = require('./routes/auth');
-app.use('/api/auth', authRoutes);           
+app.use('/api/auth', authRoutes);        
+
+const userRoutes = require('./routes/users');
+app.use('/api/users', userRoutes);
+
+const orderRoutes = require('./routes/orders');
+app.use('/api/orders', orderRoutes);
 
 // Запуск сервера
 app.listen(PORT, () => {
