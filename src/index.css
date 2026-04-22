@@ -1,7 +1,14 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+
+:root {
+  --green: #3B6D11;
+  --green-light: #EAF3DE;
+  --green-mid: #C0DD97;
+  --green-dark: #27500A;
+}
 
 body {
-    font-family: 'Montserrat', sans-serif;
+    font-family: 'DM Sans', sans-serif;
     background-color: #f7f5f2;
     margin: 0;
     display: flex;
@@ -30,7 +37,7 @@ html {
 button,
 input,
 select {
-    font-family: 'Montserrat', sans-serif;
+    font-family: 'DM Sans', sans-serif;
 }
 
 .logo {
@@ -597,8 +604,8 @@ HOVER-ЕФЕКТИ
 }
 
 .catalog-card {
-    background-color: #fef3f3;
-    border: 2px solid #EAEAEA;
+    background-color: #FAFAFA !important;
+    border: 1px solid #EAEAEA !important;
     border-radius: 15px;
     display: flex;
     flex-direction: column;
@@ -1428,4 +1435,34 @@ HOVER-ЕФЕКТИ
 .toast.show {
     opacity: 1;
     transform: translateX(0);
+}
+
+/* --- ОНОВЛЕНИЙ ПОШУК (Без зеленого фону) --- */
+.search-bar-top {
+    border-radius: 25px !important; /* Повертаємо круглі краї */
+    border: 1px solid #ddd;
+    display: flex;
+    align-items: center;
+    padding: 5px 15px !important;
+}
+.search-bar-top input {
+    border: none;
+    outline: none;
+    background: transparent;
+    margin-right: 10px;
+    font-size: 16px;
+    width: 100%;
+}
+.search-bar-top button {
+    border: none;
+    background: transparent !important;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+}
+.search-bar-top button img {
+    filter: none !important; /* Повертаємо чорну лупу */
+    width: 18px;
+    height: 18px;
 }

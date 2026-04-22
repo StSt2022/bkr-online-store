@@ -71,7 +71,21 @@ const Header = () => {
 
     return (
         <header>
-            <Link to="/" className="logo">СЯЙВО</Link>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+                <Link to="/" className="logo">СЯЙВО</Link>
+                <Link to="/catalog" style={{ 
+                    backgroundColor: 'var(--green-light)', 
+                    color: 'var(--green)', 
+                    padding: '8px 16px', 
+                    borderRadius: '10px', 
+                    textDecoration: 'none', 
+                    fontWeight: '600', 
+                    marginLeft: '20px',
+                    fontSize: '15px'
+                }}>
+                    ☰ Каталог
+                </Link>
+            </div>
             
             <div className="search-container" ref={searchRef}>
                 <form className="search-bar-top" onSubmit={handleSearchSubmit}>

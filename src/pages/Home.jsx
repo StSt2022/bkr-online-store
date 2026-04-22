@@ -1,10 +1,45 @@
 // src/pages/Home.jsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import ProductCard from '../components/ProductCard/ProductCard';
+
+// Наші "Задачі дня" та теги, які їм відповідають
+const dailyTasks = [
+    { id: 'bathroom', label: '🛁 Прибрати ванну', tags: ['ванна', 'сантехніка'] },
+    { id: 'windows', label: '🪟 Помити вікна', tags: ['скло', 'вікна', 'дзеркала'] },
+    { id: 'kitchen', label: '🍳 Прибрати кухню', tags: ['кухня', 'антижир'] },
+    { id: 'laundry', label: '👕 Випрати білизну', tags: ['прання', 'кондиціонер'] },
+    { id: 'general', label: '🏠 Генеральне', tags: ['підлога', 'поверхні'] },
+    { id: 'personal', label: '🚿 Догляд', tags: ['догляд', 'гігієна', 'мило'] }
+];
 
 const Home = () => {
+    const [products, setProducts] = useState([]);
+    const [activeTask, setActiveTask] = useState(dailyTasks[0]); // За замовчуванням перша задача
+
+    useEffect(() => {
+        // Завантажуємо всі товари з нашого бекенду
+        fetch('http://localhost:3001/api/products')
+            .then(res => res.json())
+            .then(data => setProducts(data))
+            .catch(err => console.error(err));
+    }, []);
+
+    // Фільтруємо товари для "Задачі дня"
+    // Шукаємо товари, у яких є хоча б один тег, що збігається з тегами активної задачі
+    const taskProducts = products.filter(product => 
+        product.tags.some(tag => activeTask.tags.includes(tag))
+    ).slice(0, 4); // Беремо максимум 4 штуки для краси
+
+    // Фільтруємо Популярні товари (popularity > 90)
+    const popularProducts = [...products].sort((a, b) => b.popularity - a.popularity).slice(0, 4);
+
+    // Фільтруємо Новинки
+    const newProducts = products.filter(p => p.isNewProduct).slice(0, 4);
+
     return (
         <>
+            {/* Твій оригінальний HERO банер */}
             <section className="hero">
                 <div className="hero-content">
                     <h1>Все для дому та особистої гігієни</h1>
@@ -15,6 +50,7 @@ const Home = () => {
                 </div>
             </section>
 
+            {/* Твої оригінальні категорії */}
             <section className="categories">
                 <Link to="/catalog?category=cleaning" className="category-item-link">
                     <div className="category-item">
@@ -24,7 +60,6 @@ const Home = () => {
                         <p>Засоби для прибирання</p>
                     </div>
                 </Link>
-                
                 <Link to="/catalog?category=cosmetics" className="category-item-link">
                     <div className="category-item">
                         <div className="icon-bg" style={{ backgroundColor: '#ffe0e0' }}>
@@ -33,7 +68,6 @@ const Home = () => {
                         <p>Косметика та парфумерія</p>
                     </div>
                 </Link>
-                
                 <Link to="/catalog?category=hygiene" className="category-item-link">
                     <div className="category-item">
                         <div className="icon-bg" style={{ backgroundColor: '#d4f1f4' }}>
@@ -42,7 +76,6 @@ const Home = () => {
                         <p>Засоби особистої гігієни</p>
                     </div>
                 </Link>
-                
                 <Link to="/catalog?category=household" className="category-item-link">
                     <div className="category-item">
                         <div className="icon-bg" style={{ backgroundColor: '#e9e7f9' }}>
@@ -53,73 +86,65 @@ const Home = () => {
                 </Link>
             </section>
 
-            <section className="promo-blocks" id="weekly-sale">
-                <div className="promo-item sale">
-                    <div className="promo-text">
-                        <h2>Акція тижня</h2>
-                        <p className="discount">-20%</p>
-                        <p>на засоби для прання</p>
+            <main>
+                {/* НОВА СЕКЦІЯ: ЗАДАЧА ДНЯ */}
+                <section style={{ marginBottom: '60px' }}>
+                    <h2 style={{ fontSize: '28px', marginBottom: '20px' }}>Що робимо сьогодні?</h2>
+                    
+                    {/* Кнопки задач */}
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '30px' }}>
+                        {dailyTasks.map(task => (
+                            <button 
+                                key={task.id}
+                                onClick={() => setActiveTask(task)}
+                                style={{
+                                    padding: '10px 20px',
+                                    borderRadius: '50px',
+                                    border: '1px solid #ddd',
+                                    backgroundColor: activeTask.id === task.id ? '#333' : '#fff',
+                                    color: activeTask.id === task.id ? '#fff' : '#333',
+                                    cursor: 'pointer',
+                                    fontWeight: '500',
+                                    transition: 'all 0.2s ease'
+                                }}
+                            >
+                                {task.label}
+                            </button>
+                        ))}
                     </div>
-                    <img src="/images/washing-bottle.png" alt="Laundry Detergent" />
-                </div>
-                <div className="promo-item delivery-promo">
-                    <img src="/images/delivery-truck.png" alt="Доставка" className="promo-icon" />
-                    <h3>Безкоштовна доставка</h3>
-                    <p>На всі замовлення від 500 грн по всій Україні. Обирайте зручний для вас спосіб!</p>
-                </div>
-            </section>
 
-            <section className="product-showcase">
-                <Link to="/catalog?category=cosmetics" className="product-card-link">
-                    <div className="product-card">
-                        <h3>Новинки косметики</h3>
-                        <img src="/images/cosmetics.jpg" alt="Новинки косметики" />
-                        <div className="features">
-                            <div className="feature-item">
-                                <img src="/images/delivery.png" alt="Доставка" />
-                                <span>Швидка доставка</span>
-                            </div>
-                            <div className="feature-item">
-                                <img src="/images/leaves.png" alt="Натуральні інгредієнти" />
-                                <span>Натуральні інгредієнти</span>
-                            </div>
-                            <div className="feature-item">
-                                <img src="/images/tag.png" alt="Знижки" />
-                                <span>Знижки на набори</span>
-                            </div>
-                            <div className="feature-item">
-                                <img src="/images/gift.png" alt="Подарунок" />
-                                <span>Подарунок у замовленні</span>
-                            </div>
-                        </div>
+                    {/* Товари для задачі */}
+                    <div className="product-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+                        {taskProducts.length > 0 ? (
+                            taskProducts.map(p => <ProductCard key={p.id} product={p} />)
+                        ) : (
+                            <p>Для цієї задачі поки немає товарів.</p>
+                        )}
                     </div>
-                </Link>
+                </section>
 
-                <Link to="/catalog?category=household" className="product-card-link">
-                    <div className="product-card">
-                        <h3>Набори для дому</h3>
-                        <img src="/images/cleaning-kit.jpg" alt="Набори для дому" />
-                        <div className="features">
-                            <div className="feature-item">
-                                <img src="/images/leaf.png" alt="Еко-засоби" />
-                                <span>Еко-засоби</span>
-                            </div>
-                            <div className="feature-item">
-                                <img src="/images/shield.png" alt="Безпечно для дітей" />
-                                <span>Безпечно для дітей</span>
-                            </div>
-                            <div className="feature-item">
-                                <img src="/images/best-price.png" alt="Вигідна ціна" />
-                                <span>Вигідна ціна</span>
-                            </div>
-                            <div className="feature-item">
-                                <img src="/images/waterdrop.png" alt="Концентрат" />
-                                <span>Концентровані формули</span>
-                            </div>
-                        </div>
+                {/* НОВА СЕКЦІЯ: ПОПУЛЯРНЕ */}
+                <section style={{ marginBottom: '60px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                        <h2 style={{ fontSize: '28px', margin: 0 }}>Популярні товари</h2>
+                        <Link to="/catalog" style={{ color: '#333', textDecoration: 'none', fontWeight: '500' }}>Дивитись усі →</Link>
                     </div>
-                </Link>
-            </section>
+                    <div className="product-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+                        {popularProducts.map(p => <ProductCard key={p.id} product={p} />)}
+                    </div>
+                </section>
+
+                {/* НОВА СЕКЦІЯ: НОВИНКИ */}
+                <section style={{ marginBottom: '60px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                        <h2 style={{ fontSize: '28px', margin: 0 }}>Новинки</h2>
+                        <Link to="/catalog" style={{ color: '#333', textDecoration: 'none', fontWeight: '500' }}>Дивитись усі →</Link>
+                    </div>
+                    <div className="product-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+                        {newProducts.map(p => <ProductCard key={p.id} product={p} />)}
+                    </div>
+                </section>
+            </main>
         </>
     );
 };
