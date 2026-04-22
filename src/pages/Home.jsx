@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard/ProductCard';
+import { getRecommendedTags, getViewedIds } from '../utils/recommendations';
 
 // Наші "Задачі дня" та теги, які їм відповідають
 const dailyTasks = [
@@ -15,15 +16,27 @@ const dailyTasks = [
 
 const Home = () => {
     const [products, setProducts] = useState([]);
+    const [recommendedProducts, setRecommendedProducts] = useState([]);
     const [activeTask, setActiveTask] = useState(dailyTasks[0]); // За замовчуванням перша задача
 
     useEffect(() => {
-        // Завантажуємо всі товари з нашого бекенду
-        fetch('http://localhost:3001/api/products')
-            .then(res => res.json())
-            .then(data => setProducts(data))
-            .catch(err => console.error(err));
-    }, []);
+            // 1. Вантажимо всі товари (як було)
+            fetch('http://localhost:3001/api/products')
+                .then(res => res.json())
+                .then(data => setProducts(data))
+                .catch(err => console.error(err));
+
+            // 2. ВАНТАЖИМО ПЕРСОНАЛЬНІ РЕКОМЕНДАЦІЇ
+            const tags = getRecommendedTags();
+            const excludeIds = getViewedIds();
+            
+            if (tags.length > 0) {
+                fetch(`http://localhost:3001/api/products/recommendations?tags=${tags.join(',')}&exclude=${excludeIds.join(',')}`)
+                    .then(res => res.json())
+                    .then(data => setRecommendedProducts(data))
+                    .catch(err => console.error(err));
+            }
+        }, []);
 
     // Фільтруємо товари для "Задачі дня"
     // Шукаємо товари, у яких є хоча б один тег, що збігається з тегами активної задачі
@@ -122,6 +135,21 @@ const Home = () => {
                         )}
                     </div>
                 </section>
+
+                {recommendedProducts.length > 0 && (
+                    <section style={{ marginBottom: '60px', padding: '30px', backgroundColor: '#F5FCFF', borderRadius: '20px', border: '1px solid #DFEEFF' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '20px' }}>
+                            <span style={{ fontSize: '30px' }}>✨</span>
+                            <div>
+                                <h2 style={{ fontSize: '24px', margin: 0, color: '#185FA5' }}>Рекомендовано для вас</h2>
+                                <p style={{ margin: '5px 0 0 0', color: '#666', fontSize: '14px' }}>На основі ваших переглядів</p>
+                            </div>
+                        </div>
+                        <div className="product-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+                            {recommendedProducts.map(p => <ProductCard key={p.id} product={p} />)}
+                        </div>
+                    </section>
+                )}
 
                 {/* НОВА СЕКЦІЯ: ПОПУЛЯРНЕ */}
                 <section style={{ marginBottom: '60px' }}>

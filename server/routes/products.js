@@ -3,15 +3,41 @@ const express = require('express');
 const router = express.Router();
 const Product = require('../models/Product');
 
-// GET /api/products - Отримати всі товари
+// GET /api/products - Отримати всі товари АБО товари за списком ID
 router.get('/', async (req, res) => {
     try {
-        // Беремо всі товари з БД (без якихось фільтрів поки що)
-        const products = await Product.find();
+        let query = {};
+        // Якщо передали ?ids=1,2,3 - шукаємо тільки їх
+        if (req.query.ids) {
+            const idsArray = req.query.ids.split(',').map(Number);
+            query = { id: { $in: idsArray } };
+        }
+        const products = await Product.find(query);
         res.json(products);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "Помилка сервера при отриманні товарів" });
+        res.status(500).json({ message: "Помилка сервера" });
+    }
+});
+
+// GET /api/products/recommendations - Отримати рекомендації по тегах
+router.get('/recommendations', async (req, res) => {
+    try {
+        const tags = req.query.tags ? req.query.tags.split(',') : [];
+        const exclude = req.query.exclude ? req.query.exclude.split(',').map(Number) : [];
+        const limit = parseInt(req.query.limit) || 4;
+
+        if (tags.length === 0) return res.json([]);
+
+        const products = await Product.find({
+            tags: { $in: tags },
+            id: { $nin: exclude }
+        })
+        .sort({ popularity: -1 }) // ДОДАЛИ: Сортуємо від найпопулярніших до найменш
+        .limit(limit);
+
+        res.json(products);
+    } catch (error) {
+        res.status(500).json({ message: "Помилка генерації рекомендацій" });
     }
 });
 

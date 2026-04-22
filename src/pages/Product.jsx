@@ -1,7 +1,8 @@
 // src/pages/Product.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-// ВИДАЛИЛИ: import { products } from '../data/mockData';
+import ProductCard from '../components/ProductCard/ProductCard'; // ДОДАЛИ
+import { recordProductView } from '../utils/recommendations'; // ДОДАЛИ
 
 const categoryNames = {
     cosmetics: "Косметика та парфумерія",
@@ -15,33 +16,41 @@ const Product = () => {
     
     // Стани для роботи з бекендом
     const [product, setProduct] = useState(null);
+    const [relatedProducts, setRelatedProducts] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     
     const [toastMessage, setToastMessage] = useState('');
 
     useEffect(() => {
-        const fetchSingleProduct = async () => {
-            try {
-                setIsLoading(true);
-                // Просимо в бекенда конкретний товар
-                const response = await fetch(`http://localhost:3001/api/products/${id}`);
-                
-                if (!response.ok) {
-                    throw new Error('Товар не знайдено');
-                }
-                
-                const data = await response.json();
-                setProduct(data);
-                setIsLoading(false);
-            } catch (err) {
-                setError(err.message);
-                setIsLoading(false);
-            }
-        };
+            const fetchSingleProduct = async () => {
+                try {
+                    setIsLoading(true);
+                    const response = await fetch(`http://localhost:3001/api/products/${id}`);
+                    if (!response.ok) throw new Error('Товар не знайдено');
+                    const data = await response.json();
+                    setProduct(data);
+                    
+                    // 1. ЗАПИСУЄМО ПЕРЕГЛЯД
+                    recordProductView(data);
 
-        fetchSingleProduct();
-    }, [id]); // Запит відбудеться знову, якщо зміниться id в URL
+                    // 2. ВАНТАЖИМО ПОВ'ЯЗАНІ ТОВАРИ (Часто купують разом)
+                    if (data.related_products && data.related_products.length > 0) {
+                        const relatedRes = await fetch(`http://localhost:3001/api/products?ids=${data.related_products.join(',')}`);
+                        const relatedData = await relatedRes.json();
+                        setRelatedProducts(relatedData);
+                    } else {
+                        setRelatedProducts([]);
+                    }
+
+                    setIsLoading(false);
+                } catch (err) {
+                    setError(err.message);
+                    setIsLoading(false);
+                }
+            };
+            fetchSingleProduct();
+        }, [id]);
 
     const handleAddToCart = () => {
         if (!product) return;
@@ -99,6 +108,15 @@ const Product = () => {
                     </button>
                 </div>
             </div>
+
+            {relatedProducts.length > 0 && (
+                <div style={{ marginTop: '60px', borderTop: '1px solid #eee', paddingTop: '40px' }}>
+                    <h2 style={{ fontSize: '24px', marginBottom: '20px' }}>З цим товаром часто купують</h2>
+                    <div className="product-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+                        {relatedProducts.map(p => <ProductCard key={p.id} product={p} />)}
+                    </div>
+                </div>
+            )}
 
             <div id="toast-container">
                 <div className={`toast ${toastMessage ? 'show' : ''}`}>
