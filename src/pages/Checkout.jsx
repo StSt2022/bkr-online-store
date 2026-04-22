@@ -1,6 +1,7 @@
 // src/pages/Checkout.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react'; // ДОДАЛИ useContext
 import { useNavigate } from 'react-router-dom';
+import { AuthContext } from '../context/AuthContext'; // ДОДАЛИ
 import { products, loggedInUser } from '../data/mockData';
 
 const Checkout = () => {
@@ -30,13 +31,60 @@ const Checkout = () => {
     const totalSum = enrichedCart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
 
     // Функція, яка спрацює при успішному заповненні форми
-    const handleSubmit = (e) => {
-        e.preventDefault(); // Зупиняємо стандартну поведінку браузера
-        
-        // Тут в майбутньому ми будемо відправляти дані на бекенд (в папку server)
-        // А поки що просто переходимо на сторінку "Дякуємо"
-        navigate('/thank-you');
-    };
+    const { user, token } = useContext(AuthContext); // Дістаємо токен
+
+        const handleSubmit = async (e) => {
+            e.preventDefault(); 
+            
+            // Збираємо дані для бекенда
+            const orderData = {
+                items: enrichedCart.map(item => ({
+                    productId: item.product._id, // Увага! Тепер треба відправляти _id з Монго, а не просто id, але оскільки ми поки беремо з mockData, залишаємо id. Давай просто відправимо що є.
+                    name: item.product.name,
+                    price: item.product.price,
+                    quantity: item.quantity
+                })),
+                total: totalSum,
+                delivery: {
+                    method: deliveryMethod,
+                    city: document.getElementById('city')?.value || document.getElementById('city-ukr')?.value || '',
+                    address: document.getElementById('address')?.value || '',
+                    postOffice: document.getElementById('post-office')?.value || document.getElementById('post-office-ukr')?.value || ''
+                },
+                payment: document.querySelector('input[name="payment"]:checked').value,
+                contacts: {
+                    firstName: document.getElementById('firstName').value,
+                    lastName: document.getElementById('lastName').value,
+                    phone: document.getElementById('phone').value
+                }
+            };
+
+            try {
+                // Налаштовуємо заголовки. Якщо є токен - додаємо його!
+                const headers = { 'Content-Type': 'application/json' };
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
+                const response = await fetch('http://localhost:3001/api/orders', {
+                    method: 'POST',
+                    headers,
+                    body: JSON.stringify(orderData)
+                });
+
+                if (!response.ok) throw new Error('Помилка при оформленні');
+
+                const data = await response.json();
+                
+                // Зберігаємо отриманий реальний номер замовлення в sessionStorage (щоб сторінка ThankYou його побачила)
+                sessionStorage.setItem('lastOrderId', data.orderId);
+                
+                navigate('/thank-you');
+            } catch (error) {
+                alert('Сталася помилка при оформленні замовлення. Спробуйте ще раз.');
+                console.error(error);
+            }
+        };
 
     return (
         <div className="checkout-page" style={{ padding: '40px' }}>

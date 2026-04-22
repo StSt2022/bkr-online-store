@@ -6,15 +6,20 @@ const ThankYou = () => {
     const [orderNumber, setOrderNumber] = useState('');
 
     useEffect(() => {
-        // Генеруємо випадковий номер замовлення
-        const randomNumber = Math.floor(10000 + Math.random() * 90000);
-        setOrderNumber(`#SYV-${randomNumber}`);
+            // Читаємо реальний номер з бекенду
+            const savedOrderId = sessionStorage.getItem('lastOrderId');
+            
+            if (savedOrderId) {
+                setOrderNumber(savedOrderId);
+                sessionStorage.removeItem('lastOrderId'); // Очищаємо за собою
+            } else {
+                // Фолбек, якщо щось пішло не так
+                setOrderNumber(`#SYV-${Math.floor(10000 + Math.random() * 90000)}`);
+            }
 
-        // Очищаємо кошик після успішного замовлення
-        localStorage.removeItem('cart');
-        // Повідомляємо шапку, щоб скинула лічильник на 0
-        window.dispatchEvent(new Event('cartUpdated'));
-    }, []);
+            localStorage.removeItem('cart');
+            window.dispatchEvent(new Event('cartUpdated'));
+        }, []);
 
     return (
         <div className="thank-you-body">

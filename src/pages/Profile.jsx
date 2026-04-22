@@ -122,9 +122,50 @@ const Profile = () => {
                         <p>У вас ще немає замовлень.</p>
                     ) : (
                         <table id="order-history-table">
-                            <thead><tr><th>Номер</th><th>Дата</th><th>Сума</th><th>Статус</th></tr></thead>
+                            <thead>
+                                <tr>
+                                    <th>Номер</th>
+                                    <th>Дата</th>
+                                    <th>Сума</th>
+                                    <th>Статус</th>
+                                </tr>
+                            </thead>
                             <tbody>
-                                {/* Тут ми будемо виводити замовлення, коли зробимо Крок 4 */}
+                                {/* МИ ДОДАЛИ ЦЕЙ БЛОК: перебираємо замовлення і малюємо рядки */}
+                                {orders.map(order => {
+                                    // Перекладач статусів
+                                    const statusMap = {
+                                        'pending': 'В обробці',
+                                        'confirmed': 'Підтверджено',
+                                        'delivered': 'Доставлено'
+                                    };
+                                    
+                                    // Форматуємо дату
+                                    const formattedDate = new Date(order.createdAt).toLocaleDateString('uk-UA', {
+                                        day: '2-digit', month: '2-digit', year: 'numeric',
+                                        hour: '2-digit', minute: '2-digit'
+                                    });
+
+                                    return (
+                                        <tr key={order._id}>
+                                            <td style={{ fontWeight: '600' }}>{order.orderId}</td>
+                                            <td>{formattedDate}</td>
+                                            <td>{order.total} грн</td>
+                                            <td>
+                                                <span style={{
+                                                    backgroundColor: order.status === 'pending' ? '#FFF8E6' : '#EAF3DE',
+                                                    color: order.status === 'pending' ? '#D4A017' : '#3B6D11',
+                                                    padding: '4px 8px',
+                                                    borderRadius: '12px',
+                                                    fontSize: '13px',
+                                                    fontWeight: '500'
+                                                }}>
+                                                    {statusMap[order.status] || order.status}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     )}
