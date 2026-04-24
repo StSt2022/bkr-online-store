@@ -3,6 +3,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Auth from './pages/Auth';
+import AIAssistant from './components/AIAssistant/AIAssistant';
 
 import Header from './components/Header/Header';
 import Footer from './components/Footer/Footer';
@@ -38,6 +39,7 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <ScrollToTop />
+        <AIAssistant />
         
         <Routes>
           {/* 2. Ця сторінка стоїть ОКРЕМО, тому вона буде на весь екран без Хедера/Футера */}
