@@ -604,8 +604,8 @@ HOVER-ЕФЕКТИ
 }
 
 .catalog-card {
-    background-color: #FAFAFA !important;
-    border: 1px solid #EAEAEA !important;
+    background-color: #FAFAFA; 
+    border: 1px solid #EAEAEA;
     border-radius: 15px;
     display: flex;
     flex-direction: column;

@@ -26,14 +26,28 @@ router.get('/recommendations', async (req, res) => {
         const exclude = req.query.exclude ? req.query.exclude.split(',').map(Number) : [];
         const limit = parseInt(req.query.limit) || 4;
 
-        if (tags.length === 0) return res.json([]);
+        let products = [];
 
-        const products = await Product.find({
-            tags: { $in: tags },
-            id: { $nin: exclude }
-        })
-        .sort({ popularity: -1 }) // ДОДАЛИ: Сортуємо від найпопулярніших до найменш
-        .limit(limit);
+        // 1. Спочатку шукаємо по тегах
+        if (tags.length > 0) {
+            products = await Product.find({
+                tags: { $in: tags },
+                id: { $nin: exclude }
+            }).sort({ popularity: -1 }).limit(limit);
+        }
+
+        // 2. Якщо знайшли менше ніж треба (або тегів не було взагалі) - ДОБИВАЄМО ПОПУЛЯРНИМИ
+        if (products.length < limit) {
+            const foundIds = products.map(p => p.id);
+            const ignoreIds = [...exclude, ...foundIds]; // Виключаємо ті, що вже дивимось, і ті, що вже знайшли
+            const needed = limit - products.length;
+
+            const fallbackProducts = await Product.find({
+                id: { $nin: ignoreIds }
+            }).sort({ popularity: -1 }).limit(needed);
+
+            products = [...products, ...fallbackProducts];
+        }
 
         res.json(products);
     } catch (error) {
