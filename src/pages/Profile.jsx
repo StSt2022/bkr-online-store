@@ -8,6 +8,9 @@ const Profile = () => {
     const [activeTab, setActiveTab] = useState('personal');
     const [orders, setOrders] = useState([]);
     const [message, setMessage] = useState('');
+    const [allProducts, setAllProducts] = useState([]); 
+    const [selectedProductId, setSelectedProductId] = useState('');
+    const [intervalDays, setIntervalDays] = useState(30);
 
     // Стани для форм (беремо з юзера, якщо даних ще нема - ставимо дефолтні)
     const [personalData, setPersonalData] = useState({
@@ -25,15 +28,26 @@ const Profile = () => {
 
     // Завантажуємо замовлення при відкритті таби "orders"
     useEffect(() => {
-        if (activeTab === 'orders' && token) {
-            fetch('http://localhost:3001/api/orders/my', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            })
-            .then(res => res.json())
-            .then(data => setOrders(data))
-            .catch(err => console.error(err));
-        }
-    }, [activeTab, token]);
+            if (token) {
+                // Вантажимо замовлення
+                if (activeTab === 'orders') {
+                    fetch('http://localhost:3001/api/orders/my', {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    })
+                    .then(res => res.json())
+                    .then(data => setOrders(data))
+                    .catch(console.error);
+                }
+                
+                // Вантажимо всі товари (потрібні для таби "Мій запас")
+                if (activeTab === 'stock' && allProducts.length === 0) {
+                    fetch('http://localhost:3001/api/products')
+                    .then(res => res.json())
+                    .then(data => setAllProducts(data))
+                    .catch(console.error);
+                }
+            }
+        }, [activeTab, token]);
 
     // Якщо не залогінений - кидаємо на сторінку входу
     if (!user) {
@@ -71,6 +85,44 @@ const Profile = () => {
             login(token, updatedUser);
             setMessage('Анкету "Мій дім" успішно збережено!');
             setTimeout(() => setMessage(''), 3000);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleAddStock = async (e) => {
+        e.preventDefault();
+        if (!selectedProductId) return;
+
+        try {
+            // Знаходимо реальний MongoDB _id для обраного товару
+            const product = allProducts.find(p => p.id.toString() === selectedProductId);
+            if (!product) return;
+
+            const res = await fetch('http://localhost:3001/api/users/me/stock', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ productId: product._id, intervalDays })
+            });
+            const data = await res.json();
+            
+            // Оновлюємо глобальний стейт юзера (щоб список відмалювався одразу)
+            login(token, { ...user, stock: data.stock });
+            setMessage('Товар додано до запасу!');
+            setTimeout(() => setMessage(''), 3000);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    const handleRemoveStock = async (mongoId) => {
+        try {
+            const res = await fetch(`http://localhost:3001/api/users/me/stock/${mongoId}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            login(token, { ...user, stock: data.stock });
         } catch (error) {
             console.error(error);
         }
@@ -205,10 +257,87 @@ const Profile = () => {
                 </div>
             )}
 
-            {/* ТАБ 4: Мій запас */}
+{/* ТАБ 4: Мій запас */}
             {activeTab === 'stock' && (
-                <div className="profile-card">
-                    <p>Скоро тут з'явиться ваш персональний запас товарів.</p>
+                <div className="profile-grid">
+                    {/* Форма додавання */}
+                    <div className="profile-card">
+                        <h2>Додати в запас</h2>
+                        <form onSubmit={handleAddStock} className="checkout-form">
+                            <div className="form-group">
+                                <label>Оберіть товар</label>
+                                <select 
+                                    value={selectedProductId} 
+                                    onChange={(e) => setSelectedProductId(e.target.value)}
+                                    style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #ddd' }}
+                                    required
+                                >
+                                    <option value="">-- Виберіть товар --</option>
+                                    {allProducts.map(p => (
+                                        <option key={p.id} value={p.id}>{p.name} ({p.price} грн)</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="form-group">
+                                <label>Як часто ви це купуєте?</label>
+                                <select 
+                                    value={intervalDays} 
+                                    onChange={(e) => setIntervalDays(Number(e.target.value))}
+                                    style={{ width: '100%', padding: '12px', borderRadius: '8px', border: '1px solid #ddd' }}
+                                >
+                                    <option value={14}>Кожні 2 тижні (14 днів)</option>
+                                    <option value={30}>Щомісяця (30 днів)</option>
+                                    <option value={60}>Раз на 2 місяці (60 днів)</option>
+                                </select>
+                            </div>
+                            <button type="submit" className="add-to-cart-button" style={{ marginTop: '10px' }}>Додати нагадування</button>
+                        </form>
+                    </div>
+
+                    {/* Список запасу */}
+                    <div className="profile-card">
+                        <h2>Мій поточний запас</h2>
+                        {(!user.stock || user.stock.length === 0) ? (
+                            <p style={{ color: '#666' }}>Ваш список порожній. Додайте товари, якими ви користуєтесь постійно.</p>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                {user.stock.map((item, idx) => {
+                                    // Знаходимо назву по _id
+                                    const prod = allProducts.find(p => p._id === item.productId);
+                                    if (!prod) return null;
+
+                                    // Рахуємо, коли наступна покупка
+                                    const nextDate = new Date(item.lastBought);
+                                    nextDate.setDate(nextDate.getDate() + item.intervalDays);
+                                    const isSoon = nextDate.getTime() - new Date().getTime() < (3 * 24 * 60 * 60 * 1000); // Менше 3 днів
+
+                                    return (
+                                        <div key={idx} style={{ 
+                                            display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
+                                            padding: '15px', border: `1px solid ${isSoon ? '#FCEBEB' : '#e8ede3'}`, 
+                                            backgroundColor: isSoon ? '#FFF9F9' : '#fff', borderRadius: '12px' 
+                                        }}>
+                                            <div>
+                                                <p style={{ margin: '0 0 5px 0', fontWeight: '600' }}>{prod.name}</p>
+                                                <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>
+                                                    Наступна покупка: <strong style={{ color: isSoon ? '#A32D2D' : '#333' }}>
+                                                        {nextDate.toLocaleDateString('uk-UA')}
+                                                    </strong>
+                                                </p>
+                                            </div>
+                                            <button 
+                                                onClick={() => handleRemoveStock(item.productId)}
+                                                style={{ background: 'none', border: 'none', color: '#A32D2D', cursor: 'pointer', fontSize: '20px' }}
+                                                title="Видалити"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
                 </div>
             )}
         </div>
