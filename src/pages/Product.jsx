@@ -47,11 +47,25 @@ const Product = () => {
             setProduct(data);
             recordProductView(data);
 
-            if (data.related_products && data.related_products.length > 0) {
-                const relatedRes = await fetch(`http://localhost:3001/api/products?ids=${data.related_products.join(',')}`);
-                setRelatedProducts(await relatedRes.json());
-            } else {
-                setRelatedProducts([]);
+            // НОВА ЛОГІКА: "Інші також купували"
+            try {
+                const alsoBoughtRes = await fetch(`http://localhost:3001/api/products/${id}/also-bought`);
+                const alsoBoughtData = await alsoBoughtRes.json();
+                
+                // Якщо алгоритм знайшов щось у реальних замовленнях - показуємо
+                if (alsoBoughtData.length > 0) {
+                    setRelatedProducts(alsoBoughtData);
+                } else {
+                    // Якщо реальних замовлень ще нема (fallback) - показуємо жорстко зашиті з бази
+                    if (data.related_products && data.related_products.length > 0) {
+                        const fallbackRes = await fetch(`http://localhost:3001/api/products?ids=${data.related_products.join(',')}`);
+                        setRelatedProducts(await fallbackRes.json());
+                    } else {
+                        setRelatedProducts([]);
+                    }
+                }
+            } catch (err) {
+                console.error("Помилка завантаження related", err);
             }
             
             fetchReviews();

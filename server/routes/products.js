@@ -55,6 +55,45 @@ router.get('/recommendations', async (req, res) => {
     }
 });
 
+// GET /api/products/:id/also-bought - АЛГОРИТМ "Інші також купували"
+router.get('/:id/also-bought', async (req, res) => {
+    try {
+        const Order = require('../models/Order');
+        const numId = Number(req.params.id);
+        
+        // 1. Знаходимо _id товару в Монго (бо в замовленнях лежать _id, а не наші кастомні id)
+        const currentProduct = await Product.findOne({ id: numId });
+        if (!currentProduct) return res.json([]);
+
+        // 2. Агрегація (Магія MongoDB): Шукаємо всі товари, які купували разом з цим
+        const alsoBoughtAgg = await Order.aggregate([
+            // Крок А: Беремо тільки ті замовлення, де був цей товар
+            { $match: { "items.productId": currentProduct._id } },
+            // Крок Б: "Розбиваємо" масив товарів на окремі документи
+            { $unwind: "$items" },
+            // Крок В: Виключаємо сам цей товар (бо ми і так знаємо, що його купили)
+            { $match: { "items.productId": { $ne: currentProduct._id } } },
+            // Крок Г: Групуємо за ID інших товарів і рахуємо частоту їх появи
+            { $group: { _id: "$items.productId", frequency: { $sum: 1 } } },
+            // Крок Ґ: Сортуємо від найчастіших до найменш
+            { $sort: { frequency: -1 } },
+            // Крок Д: Беремо тільки Топ-4
+            { $limit: 4 }
+        ]);
+
+        if (alsoBoughtAgg.length === 0) return res.json([]);
+
+        // 3. У нас є список найпопулярніших _id. Тепер дістаємо самі товари з бази
+        const topProductIds = alsoBoughtAgg.map(item => item._id);
+        const relatedProducts = await Product.find({ _id: { $in: topProductIds } });
+
+        res.json(relatedProducts);
+    } catch (error) {
+        console.error("Помилка алгоритму also-bought:", error);
+        res.status(500).json({ message: "Помилка аналізу замовлень" });
+    }
+});
+
 // GET /api/products/trending - Отримати товари з топ задачі дня
 router.get('/trending', async (req, res) => {
     try {
