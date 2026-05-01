@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard/ProductCard';
-// ВИДАЛИЛИ: import { products } from '../data/mockData';
 
 const categoryData = {
     cleaning: { name: "Засоби для прибирання", colorClass: "category-cleaning" },
@@ -15,34 +14,44 @@ const Catalog = () => {
     const [searchParams] = useSearchParams();
     const categoryQuery = searchParams.get('category');
 
-    // Нові стани для роботи з бекендом
     const [products, setProducts] = useState([]);
+    const [trendingIds, setTrendingIds] = useState([]); // СТАН ДЛЯ ТРЕНДІВ
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
 
     const currentCategoryInfo = categoryData[categoryQuery] || { name: "Каталог товарів", colorClass: "category-default" };
 
-    // Звертаємося до бекенду при завантаженні сторінки
     useEffect(() => {
         const fetchProducts = async () => {
             try {
-                // Робимо запит на наш бекенд
                 const response = await fetch('http://localhost:3001/api/products');
                 if (!response.ok) throw new Error('Помилка при завантаженні товарів');
-                
                 const data = await response.json();
-                setProducts(data); // Зберігаємо отримані товари
-                setIsLoading(false); // Вимикаємо лоадер
+                setProducts(data);
+                setIsLoading(false);
             } catch (err) {
                 setError(err.message);
                 setIsLoading(false);
             }
         };
 
-        fetchProducts();
-    }, []); // Порожній масив означає, що запит відбудеться 1 раз при відкритті сторінки
+        // Завантажуємо список ID товарів, які зараз в тренді
+        const fetchTrending = async () => {
+            try {
+                const res = await fetch('http://localhost:3001/api/products/trending');
+                const data = await res.json();
+                if (data.products) {
+                    setTrendingIds(data.products.map(p => p.id));
+                }
+            } catch (error) {
+                console.error("Помилка завантаження трендів", error);
+            }
+        };
 
-    // Фільтруємо вже ОТРИМАНІ з бекенду товари
+        fetchProducts();
+        fetchTrending(); // ВИКЛИКАЄМО ТУТ
+    }, []); 
+
     const filteredProducts = categoryQuery
         ? products.filter(p => p.category === categoryQuery)
         : products;
@@ -57,16 +66,18 @@ const Catalog = () => {
             
             <h1>{currentCategoryInfo.name}</h1>
             
-            {/* Показуємо лоадер або помилку, якщо щось пішло не так */}
             {isLoading && <p>Завантаження товарів...</p>}
             {error && <p style={{ color: 'red' }}>{error}</p>}
             
-            {/* Показуємо товари тільки коли вони завантажились і немає помилок */}
             {!isLoading && !error && (
                 <div className="product-grid">
                     {filteredProducts.length > 0 ? (
                         filteredProducts.map(product => (
-                            <ProductCard key={product.id} product={product} />
+                            <ProductCard 
+                                key={product.id} 
+                                product={product} 
+                                isTrending={trendingIds.includes(product.id)} // ПЕРЕДАЄМО ФЛАГ В КАРТКУ
+                            />
                         ))
                     ) : (
                         <p>На жаль, у цій категорії товарів ще немає.</p>

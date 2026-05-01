@@ -1,10 +1,8 @@
-// src/pages/Home.jsx
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard/ProductCard';
 import { getRecommendedTags, getViewedIds } from '../utils/recommendations';
 
-// Наші "Задачі дня" та теги, які їм відповідають
 const dailyTasks = [
     { id: 'bathroom', label: '🛁 Прибрати ванну', tags: ['ванна', 'сантехніка'] },
     { id: 'windows', label: '🪟 Помити вікна', tags: ['скло', 'вікна', 'дзеркала'] },
@@ -17,37 +15,72 @@ const dailyTasks = [
 const Home = () => {
     const [products, setProducts] = useState([]);
     const [recommendedProducts, setRecommendedProducts] = useState([]);
-    const [activeTask, setActiveTask] = useState(dailyTasks[0]); // За замовчуванням перша задача
+    const [activeTask, setActiveTask] = useState(dailyTasks[0]);
+    
+    // НОВІ СТАНИ ДЛЯ ЛІЧИЛЬНИКІВ
+    const [taskCounters, setTaskCounters] = useState({});
+    const [topTaskKey, setTopTaskKey] = useState(null);
 
     useEffect(() => {
-            // 1. Вантажимо всі товари (як було)
-            fetch('http://localhost:3001/api/products')
+        // Вантажимо товари
+        fetch('http://localhost:3001/api/products')
+            .then(res => res.json())
+            .then(data => setProducts(data))
+            .catch(console.error);
+
+        // Вантажимо рекомендації
+        const tags = getRecommendedTags();
+        const excludeIds = getViewedIds();
+        if (tags.length > 0) {
+            fetch(`http://localhost:3001/api/products/recommendations?tags=${tags.join(',')}&exclude=${excludeIds.join(',')}`)
                 .then(res => res.json())
-                .then(data => setProducts(data))
-                .catch(err => console.error(err));
+                .then(data => setRecommendedProducts(data))
+                .catch(console.error);
+        }
 
-            // 2. ВАНТАЖИМО ПЕРСОНАЛЬНІ РЕКОМЕНДАЦІЇ
-            const tags = getRecommendedTags();
-            const excludeIds = getViewedIds();
+        // ВАНТАЖИМО ЛІЧИЛЬНИКИ ЗАДАЧ
+        fetch('http://localhost:3001/api/tasks/today')
+            .then(res => res.json())
+            .then(data => {
+                const countersMap = {};
+                let maxCount = 0;
+                let topKey = null;
+
+                data.forEach(item => {
+                    countersMap[item.taskKey] = item.count;
+                    if (item.count > maxCount) {
+                        maxCount = item.count;
+                        topKey = item.taskKey;
+                    }
+                });
+
+                setTaskCounters(countersMap);
+                setTopTaskKey(topKey);
+            })
+            .catch(console.error);
+    }, []);
+
+    // НОВА ФУНКЦІЯ КЛІКУ НА ЗАДАЧУ
+    const handleTaskClick = async (task) => {
+        setActiveTask(task);
+        
+        try {
+            // Відправляємо клік на бекенд
+            const res = await fetch(`http://localhost:3001/api/tasks/${task.id}/click`, { method: 'POST' });
+            const data = await res.json();
             
-            if (tags.length > 0) {
-                fetch(`http://localhost:3001/api/products/recommendations?tags=${tags.join(',')}&exclude=${excludeIds.join(',')}`)
-                    .then(res => res.json())
-                    .then(data => setRecommendedProducts(data))
-                    .catch(err => console.error(err));
-            }
-        }, []);
+            // Оновлюємо лічильник локально, щоб користувач одразу побачив +1
+            setTaskCounters(prev => ({
+                ...prev,
+                [task.id]: data.count
+            }));
+        } catch (error) {
+            console.error("Помилка кліку", error);
+        }
+    };
 
-    // Фільтруємо товари для "Задачі дня"
-    // Шукаємо товари, у яких є хоча б один тег, що збігається з тегами активної задачі
-    const taskProducts = products.filter(product => 
-        product.tags.some(tag => activeTask.tags.includes(tag))
-    ).slice(0, 4); // Беремо максимум 4 штуки для краси
-
-    // Фільтруємо Популярні товари (popularity > 90)
+    const taskProducts = products.filter(product => product.tags.some(tag => activeTask.tags.includes(tag))).slice(0, 4);
     const popularProducts = [...products].sort((a, b) => b.popularity - a.popularity).slice(0, 4);
-
-    // Фільтруємо Новинки
     const newProducts = products.filter(p => p.isNewProduct).slice(0, 4);
 
     return (
@@ -105,25 +138,48 @@ const Home = () => {
                     <h2 style={{ fontSize: '28px', marginBottom: '20px' }}>Що робимо сьогодні?</h2>
                     
                     {/* Кнопки задач */}
-                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '30px' }}>
-                        {dailyTasks.map(task => (
-                            <button 
-                                key={task.id}
-                                onClick={() => setActiveTask(task)}
-                                style={{
-                                    padding: '10px 20px',
-                                    borderRadius: '50px',
-                                    border: '1px solid #ddd',
-                                    backgroundColor: activeTask.id === task.id ? '#333' : '#fff',
-                                    color: activeTask.id === task.id ? '#fff' : '#333',
-                                    cursor: 'pointer',
-                                    fontWeight: '500',
-                                    transition: 'all 0.2s ease'
-                                }}
-                            >
-                                {task.label}
-                            </button>
-                        ))}
+                    <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', marginBottom: '30px' }}>
+                        {dailyTasks.map(task => {
+                            const isTop = task.id === topTaskKey;
+                            const count = taskCounters[task.id] || 0;
+                            
+                            return (
+                                <div key={task.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                                    <button 
+                                        onClick={() => handleTaskClick(task)}
+                                        style={{
+                                            position: 'relative', // Для позиціонування бейджа
+                                            padding: '12px 24px',
+                                            borderRadius: '50px',
+                                            border: isTop ? '2px solid var(--green)' : '1px solid #ddd',
+                                            backgroundColor: activeTask.id === task.id ? '#333' : '#fff',
+                                            color: activeTask.id === task.id ? '#fff' : '#333',
+                                            cursor: 'pointer',
+                                            fontWeight: isTop ? '600' : '500',
+                                            transition: 'all 0.2s ease',
+                                            boxShadow: isTop && activeTask.id !== task.id ? '0 4px 15px rgba(59, 109, 17, 0.1)' : 'none'
+                                        }}
+                                    >
+                                        {/* Бейдж "Топ сьогодні" */}
+                                        {isTop && (
+                                            <span style={{
+                                                position: 'absolute', top: '-10px', right: '-10px',
+                                                backgroundColor: 'var(--green-light)', color: 'var(--green-dark)',
+                                                fontSize: '10px', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold', border: '1px solid var(--green)'
+                                            }}>
+                                                Топ сьогодні
+                                            </span>
+                                        )}
+                                        {task.label}
+                                    </button>
+                                    
+                                    {/* Підпис із кількістю кліків */}
+                                    <span style={{ fontSize: '12px', color: '#666', height: '15px' }}>
+                                        {count > 0 ? `🔥 ${count} сьогодні` : ''}
+                                    </span>
+                                </div>
+                            );
+                        })}
                     </div>
 
                     {/* Товари для задачі */}

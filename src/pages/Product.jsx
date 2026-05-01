@@ -12,6 +12,11 @@ const categoryNames = {
     household: "Господарські товари"
 };
 
+const taskNames = {
+    bathroom: "прибирають ванну", windows: "миють вікна", kitchen: "прибирають кухню",
+    laundry: "перуть білизну", general: "роблять генеральне прибирання", personal: "обирають догляд"
+};
+
 const Product = () => {
     const { id } = useParams();
     const { user, token } = useContext(AuthContext);
@@ -24,11 +29,14 @@ const Product = () => {
     const [newReviewText, setNewReviewText] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [reviewMessage, setReviewMessage] = useState('');
-    const [myReviewId, setMyReviewId] = useState(null); // Зберігаємо ID свого відгуку
+    const [myReviewId, setMyReviewId] = useState(null); 
 
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState(null);
     const [toastMessage, setToastMessage] = useState('');
+    
+    // Стан для банера "В тренді"
+    const [trendingTask, setTrendingTask] = useState(null);
 
     const fetchSingleProduct = async () => {
         try {
@@ -45,7 +53,10 @@ const Product = () => {
             } else {
                 setRelatedProducts([]);
             }
+            
             fetchReviews();
+            fetchTrending(data); // Викликаємо нову функцію
+            
             setIsLoading(false);
         } catch (err) {
             setError(err.message);
@@ -60,13 +71,27 @@ const Product = () => {
             setReviews(data);
             
             if (user) {
-                // УНІВЕРСАЛЬНИЙ ID: беремо або id, або _id
                 const currentUserId = user._id || user.id; 
                 const myReview = data.find(r => r.userId._id === currentUserId);
                 setMyReviewId(myReview ? myReview._id : null);
             }
         } catch (error) {
             console.error("Помилка:", error);
+        }
+    };
+
+    // НОВА ФУНКЦІЯ: Перевіряємо, чи цей товар зараз в тренді
+    const fetchTrending = async (currentProd) => {
+        try {
+            const res = await fetch('http://localhost:3001/api/products/trending');
+            const data = await res.json();
+            
+            // Якщо є топ-задача І наш товар є в списку рекомендованих для цієї задачі
+            if (data.topTask && data.products.some(p => p.id === currentProd.id)) {
+                setTrendingTask(data.topTask);
+            }
+        } catch (error) {
+            console.error("Помилка завантаження трендів", error);
         }
     };
 
@@ -105,9 +130,8 @@ const Product = () => {
             setNewReviewText('');
             setNewRating(5);
             
-            // Оновлюємо все
             await fetchReviews();
-            await fetchSingleProduct(); // Це оновить product.avgRating в шапці!
+            await fetchSingleProduct(); 
 
         } catch (error) {
             setReviewMessage(error.message);
@@ -117,7 +141,6 @@ const Product = () => {
     };
 
     const handleDeleteReview = async () => {
-
         try {
             const res = await fetch(`http://localhost:3001/api/products/${id}/reviews/${myReviewId}`, {
                 method: 'DELETE',
@@ -127,7 +150,7 @@ const Product = () => {
             if (res.ok) {
                 setMyReviewId(null);
                 await fetchReviews();
-                await fetchSingleProduct(); // Оновлюємо рейтинг
+                await fetchSingleProduct();
             }
         } catch (error) {
             console.error(error);
@@ -152,7 +175,6 @@ const Product = () => {
                 <div className="product-info">
                     <h1>{product.name}</h1>
                     
-{/* РЕЙТИНГ ПІД НАЗВОЮ (Динамічний) */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', color: '#666' }}>
                         {reviews.length > 0 ? (
                             <>
@@ -172,6 +194,16 @@ const Product = () => {
                         )}
                     </div>
 
+                    {/* НОВИЙ БАНЕР ТРЕНДУ */}
+                    {trendingTask && trendingTask.count > 0 && (
+                        <div style={{ backgroundColor: '#EAF3DE', border: '1px solid var(--green)', padding: '10px 15px', borderRadius: '10px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '20px' }}>🔥</span>
+                            <span style={{ color: 'var(--green-dark)', fontWeight: '500', fontSize: '14px' }}>
+                                Сьогодні <strong>{trendingTask.count}</strong> людей {taskNames[trendingTask.key]}, і беруть цей товар!
+                            </span>
+                        </div>
+                    )}
+
                     <p>{product.description}</p>
                     <div className="price">{product.price} грн</div>
                     <button className="add-to-cart-button" onClick={handleAddToCart}>Додати в кошик</button>
@@ -187,13 +219,10 @@ const Product = () => {
                 </div>
             )}
 
-            {/* ВІДГУКИ */}
             <div style={{ marginTop: '60px', borderTop: '1px solid #e8ede3', paddingTop: '40px' }}>
                 <h2 style={{ fontSize: '24px', marginBottom: '30px' }}>Відгуки покупців</h2>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '40px' }}>
-                    
-                    {/* ФОРМА */}
                     <div style={{ backgroundColor: '#fcfdfb', padding: '25px', borderRadius: '16px', border: '1px solid #e8ede3', height: 'fit-content' }}>
                         <h3 style={{ margin: '0 0 20px 0', fontSize: '18px' }}>Залишити відгук</h3>
                         
@@ -213,7 +242,6 @@ const Product = () => {
                                     </div>
                                 </div>
                                 <div style={{ marginBottom: '15px' }}>
-                                    {/* Виправили ширину box-sizing, щоб не вилазило */}
                                     <textarea 
                                         value={newReviewText} onChange={(e) => setNewReviewText(e.target.value)}
                                         placeholder="Поділіться враженнями..."
@@ -229,7 +257,6 @@ const Product = () => {
                         )}
                     </div>
 
-                    {/* СПИСОК */}
                     <div>
                         {reviews.length === 0 ? (
                             <p style={{ color: '#888' }}>Будьте першим, хто залишить відгук!</p>
@@ -251,7 +278,6 @@ const Product = () => {
                                                 <div style={{ color: '#FFB800', fontSize: '16px', letterSpacing: '1px' }}>
                                                     {'★'.repeat(review.rating)}{'☆'.repeat(5 - review.rating)}
                                                 </div>
-                                                {/* КНОПКА ВИДАЛЕННЯ (показується тільки автору відгуку) */}
                                                 {user && (user._id || user.id) === review.userId._id && (
                                                     <button onClick={handleDeleteReview} style={{ background: 'none', border: 'none', color: '#A32D2D', fontSize: '12px', cursor: 'pointer', padding: 0, marginTop: '5px' }}>
                                                         Видалити мій відгук

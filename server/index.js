@@ -35,6 +35,9 @@ app.use('/api/orders', orderRoutes);
 const assistantRoutes = require('./routes/assistant');
 app.use('/api/assistant', assistantRoutes);
 
+const taskRoutes = require('./routes/tasks');
+app.use('/api/tasks', taskRoutes);
+
 // Запуск сервера
 app.listen(PORT, () => {
     console.log(`🚀 Сервер запущено на порту ${PORT}`);

@@ -2,7 +2,7 @@
 const mongoose = require('mongoose');
 
 const productSchema = new mongoose.Schema({
-  id: Number, // Залишаємо твій старий ID для зручності зв'язків
+  id: Number,
   name: String,
   price: Number,
   image: String,
@@ -12,13 +12,14 @@ const productSchema = new mongoose.Schema({
   popularity: Number,
   related_products: [Number],
   
-  // Нові поля для рекомендаційної системи:
   priceGroup: String,     // 'budget' | 'mid' | 'premium'
   isSafeForKids: Boolean, 
   isSafeForPets: Boolean,
   brand: String,
   isNewProduct: { type: Boolean, default: false },
-  discount: { type: Number, default: 0 }
+  discount: { type: Number, default: 0 },
+  avgRating: { type: Number, default: 0 },
+  reviewCount: { type: Number, default: 0 }
 });
 
 module.exports = mongoose.model('Product', productSchema);

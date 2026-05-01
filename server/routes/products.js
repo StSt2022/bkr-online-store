@@ -55,6 +55,41 @@ router.get('/recommendations', async (req, res) => {
     }
 });
 
+// GET /api/products/trending - Отримати товари з топ задачі дня
+router.get('/trending', async (req, res) => {
+    try {
+        const TaskCounter = require('../models/TaskCounter');
+        const today = new Date().toISOString().split('T')[0];
+        
+        // 1. Знаходимо найпопулярнішу задачу за сьогодні
+        const topTask = await TaskCounter.findOne({ date: today }).sort({ count: -1 });
+        
+        if (!topTask) return res.json({ topTask: null, products: [] });
+
+        // Наш словник тегів (такий же, як на фронтенді)
+        const taskTagsMap = {
+            'bathroom': ['ванна', 'сантехніка'],
+            'windows': ['скло', 'вікна', 'дзеркала'],
+            'kitchen': ['кухня', 'антижир'],
+            'laundry': ['прання', 'кондиціонер'],
+            'general': ['підлога', 'поверхні'],
+            'personal': ['догляд', 'гігієна', 'мило']
+        };
+
+        const tagsToSearch = taskTagsMap[topTask.taskKey] || [];
+
+        // 2. Шукаємо товари, які підходять під цю задачу
+        const products = await Product.find({ tags: { $in: tagsToSearch } }).limit(8);
+
+        res.json({ 
+            topTask: { key: topTask.taskKey, count: topTask.count }, 
+            products 
+        });
+    } catch (error) {
+        res.status(500).json({ message: "Помилка отримання трендів" });
+    }
+});
+
 // GET /api/products/:id - Отримати один товар за нашим полем 'id'
 router.get('/:id', async (req, res) => {
     try {
