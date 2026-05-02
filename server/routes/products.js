@@ -26,7 +26,15 @@ router.get('/recommendations', async (req, res) => {
         const exclude = req.query.exclude ? req.query.exclude.split(',').map(Number) : [];
         const limit = parseInt(req.query.limit) || 4;
 
+        const safeForKids = req.query.safeForKids === 'true';
+
         let products = [];
+
+        const buildQuery = (extraConditions = {}) => {
+            let q = { ...extraConditions };
+            if (safeForKids) q.isSafeForKids = true; 
+            return q;
+        };
 
         // 1. Спочатку шукаємо по тегах
         if (tags.length > 0) {

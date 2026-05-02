@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import ProductCard from '../components/ProductCard/ProductCard';
 import { getRecommendedTags, getViewedIds } from '../utils/recommendations';
+import { AuthContext } from '../context/AuthContext';
 
 const dailyTasks = [
     { id: 'bathroom', label: '🛁 Прибрати ванну', tags: ['ванна', 'сантехніка'] },
@@ -13,6 +14,7 @@ const dailyTasks = [
 ];
 
 const Home = () => {
+    const { user, token } = useContext(AuthContext);
     const [products, setProducts] = useState([]);
     const [recommendedProducts, setRecommendedProducts] = useState([]);
     const [activeTask, setActiveTask] = useState(dailyTasks[0]);
@@ -20,6 +22,9 @@ const Home = () => {
     // НОВІ СТАНИ ДЛЯ ЛІЧИЛЬНИКІВ
     const [taskCounters, setTaskCounters] = useState({});
     const [topTaskKey, setTopTaskKey] = useState(null);
+
+    const [reminders, setReminders] = useState([]);
+    const [isRemindersVisible, setIsRemindersVisible] = useState(true);
 
     useEffect(() => {
         // Вантажимо товари
@@ -32,6 +37,8 @@ const Home = () => {
         const tags = getRecommendedTags();
         const excludeIds = getViewedIds();
         if (tags.length > 0) {
+            const safeFilter = (user && user.household && user.household.hasKids) ? '&safeForKids=true' : '';
+
             fetch(`http://localhost:3001/api/products/recommendations?tags=${tags.join(',')}&exclude=${excludeIds.join(',')}`)
                 .then(res => res.json())
                 .then(data => setRecommendedProducts(data))
@@ -58,7 +65,31 @@ const Home = () => {
                 setTopTaskKey(topKey);
             })
             .catch(console.error);
-    }, []);
+
+        if (token) {
+            fetch('http://localhost:3001/api/users/me/stock/reminders', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(res => res.json())
+            .then(data => setReminders(data))
+            .catch(console.error);
+        }
+
+    }, [token, user]);
+
+    // Функція додавання нагадувань в кошик
+    const handleAddRemindersToCart = () => {
+        let cart = JSON.parse(localStorage.getItem('cart')) || [];
+        reminders.forEach(p => {
+            const existing = cart.find(item => item.id === p.id);
+            if (existing) existing.quantity += 1;
+            else cart.push({ id: p.id, quantity: 1 });
+        });
+        localStorage.setItem('cart', JSON.stringify(cart));
+        window.dispatchEvent(new Event('cartUpdated'));
+        setIsRemindersVisible(false); // Ховаємо банер
+        alert("Всі нагадування додано в кошик!");
+    };
 
     // НОВА ФУНКЦІЯ КЛІКУ НА ЗАДАЧУ
     const handleTaskClick = async (task) => {
@@ -85,10 +116,40 @@ const Home = () => {
 
     return (
         <>
-            {/* Твій оригінальний HERO банер */}
+            {/* НОВИЙ БАНЕР НАГАДУВАНЬ */}
+            {reminders.length > 0 && isRemindersVisible && (
+                <div style={{ backgroundColor: '#FFF8E6', borderBottom: '1px solid #D4A017', padding: '15px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontSize: '20px' }}>🔔</span>
+                        <span style={{ color: '#7A5C00', fontWeight: '500', fontSize: '14px' }}>
+                            Час поповнити запас: <strong>{reminders.map(r => r.name).join(', ')}</strong>
+                        </span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '15px' }}>
+                        <button onClick={handleAddRemindersToCart} style={{ backgroundColor: '#D4A017', color: '#fff', border: 'none', padding: '6px 15px', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', fontSize: '13px' }}>
+                            Додати в кошик
+                        </button>
+                        <button onClick={() => setIsRemindersVisible(false)} style={{ background: 'none', border: 'none', color: '#7A5C00', cursor: 'pointer', fontSize: '20px', padding: 0 }}>
+                            ×
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <section className="hero">
                 <div className="hero-content">
-                    <h1>Все для дому та особистої гігієни</h1>
+                    {/* НОВЕ ПРИВІТАННЯ */}
+                    {user ? (
+                        <>
+                            <div style={{ display: 'inline-block', backgroundColor: '#EAF3DE', color: 'var(--green)', padding: '5px 15px', borderRadius: '20px', fontSize: '14px', fontWeight: '600', marginBottom: '15px' }}>
+                                З поверненням, {user.firstName}! 👋
+                            </div>
+                            <h1>Ось що ми підібрали для вас сьогодні</h1>
+                        </>
+                    ) : (
+                        <h1>Все для дому та особистої гігієни</h1>
+                    )}
+                    
                     <div className="hero-actions">
                         <Link to="/catalog" className="hero-btn primary-btn">Перейти до каталогу</Link>
                         <a href="#weekly-sale" className="hero-btn secondary-btn">Акції тижня</a>

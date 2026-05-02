@@ -80,4 +80,37 @@ router.delete('/me/stock/:productId', authMiddleware, async (req, res) => {
     }
 });
 
+// GET /api/users/me/stock/reminders - Отримати нагадування (що час купити)
+router.get('/me/stock/reminders', authMiddleware, async (req, res) => {
+    try {
+        const user = await User.findById(req.user.id);
+        if (!user.stock || user.stock.length === 0) return res.json([]);
+
+        const today = new Date();
+        const reminders = [];
+
+        // Перевіряємо кожен товар у запасі
+        for (let item of user.stock) {
+            const nextDate = new Date(item.lastBought);
+            nextDate.setDate(nextDate.getDate() + item.intervalDays);
+            
+            // Якщо до наступної покупки залишилось менше 3 днів (або вже прострочено)
+            const daysLeft = (nextDate.getTime() - today.getTime()) / (1000 * 3600 * 24);
+            
+            if (daysLeft <= 3) {
+                // Дістаємо інфу про товар, щоб показати назву і ціну
+                const Product = require('../models/Product');
+                const productInfo = await Product.findById(item.productId);
+                if (productInfo) {
+                    reminders.push(productInfo);
+                }
+            }
+        }
+
+        res.json(reminders);
+    } catch (error) {
+        res.status(500).json({ message: "Помилка отримання нагадувань" });
+    }
+});
+
 module.exports = router;
