@@ -39,6 +39,59 @@ router.patch('/me/household', authMiddleware, async (req, res) => {
     }
 });
 
+// GET /api/users/me/stats - Отримати статистику
+router.get('/me/stats', authMiddleware, async (req, res) => {
+    try {
+        const Order = require('../models/Order');
+        const Review = require('../models/Review');
+        
+        // 1. Всі замовлення юзера
+        const orders = await Order.find({ userId: req.user.id });
+        
+        const totalOrders = orders.length;
+        const totalSpent = orders.reduce((sum, order) => sum + order.total, 0);
+        
+        // 2. Кількість відгуків
+        const reviewsCount = await Review.countDocuments({ userId: req.user.id });
+        
+        // 3. Улюблена категорія (вираховуємо з замовлень)
+        // Для спрощення, оскільки категорій немає прямо в Order, 
+        // ми просто витягнемо найчастіше слово "name" (в реальному проекті роблять populate, 
+        // але щоб не перевантажувати бекенд, зробимо базовий підрахунок або просто фіктивну поки)
+        
+        // Спрощений агрегатор: беремо id всіх куплених товарів
+        let allBoughtProductIds = [];
+        orders.forEach(order => {
+            order.items.forEach(item => allBoughtProductIds.push(item.productId));
+        });
+
+        let favoriteCategory = "Поки невідомо";
+        if (allBoughtProductIds.length > 0) {
+            const Product = require('../models/Product');
+            // Знаходимо найпопулярнішу категорію серед куплених
+            const catAgg = await Product.aggregate([
+                { $match: { _id: { $in: allBoughtProductIds } } },
+                { $group: { _id: "$category", count: { $sum: 1 } } },
+                { $sort: { count: -1 } },
+                { $limit: 1 }
+            ]);
+            
+            if (catAgg.length > 0) {
+                const categoryNames = {
+                    cosmetics: "Косметика", cleaning: "Прибирання", 
+                    hygiene: "Гігієна", household: "Господарські"
+                };
+                favoriteCategory = categoryNames[catAgg[0]._id] || catAgg[0]._id;
+            }
+        }
+
+        res.json({ totalOrders, totalSpent, reviewsCount, favoriteCategory });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Помилка отримання статистики" });
+    }
+});
+
 // --- ДОДАВАННЯ ТОВАРУ В ЗАПАС ---
 router.post('/me/stock', authMiddleware, async (req, res) => {
     try {
