@@ -1,15 +1,13 @@
 // src/components/Header/Header.jsx
-import React, { useState, useEffect, useRef, useContext } from 'react'; // Додали useContext
+import React, { useState, useEffect, useRef, useContext } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { products } from '../../data/mockData';
-import { AuthContext } from '../../context/AuthContext'; // Імпорт вже є
+import { AuthContext } from '../../context/AuthContext';
+import { WishlistContext } from '../../context/WishlistContext';
 
 const Header = () => {
-    // 1. ДІСТАЄМО ЮЗЕРА ТА ФУНКЦІЮ ВИХОДУ
-    const { user, logout } = useContext(AuthContext);
-
     const [cartCount, setCartCount] = useState(0);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    
     const [searchQuery, setSearchQuery] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [isSearchVisible, setIsSearchVisible] = useState(false);
@@ -18,7 +16,9 @@ const Header = () => {
     const location = useLocation();
     const searchRef = useRef(null);
 
-    // --- Логіка Кошика ---
+    const { user, logout } = useContext(AuthContext);
+    const { wishlist } = useContext(WishlistContext); // Дістаємо вішліст
+
     const updateCount = () => {
         const cart = JSON.parse(localStorage.getItem('cart')) || [];
         const total = cart.reduce((sum, item) => sum + item.quantity, 0);
@@ -54,7 +54,6 @@ const Header = () => {
         if (query.trim().length >= 2) {
             setIsSearchVisible(true);
             try {
-                // Замість локального фільтра - робимо запит до Монго!
                 const res = await fetch(`http://localhost:3001/api/products/search?q=${encodeURIComponent(query.trim())}`);
                 const data = await res.json();
                 setSearchResults(data);
@@ -77,6 +76,7 @@ const Header = () => {
 
     return (
         <header>
+            {/* ЛІВА ЧАСТИНА: Лого + Каталог */}
             <div style={{ display: 'flex', alignItems: 'center' }}>
                 <Link to="/" className="logo">СЯЙВО</Link>
                 <Link to="/catalog" style={{ 
@@ -87,12 +87,14 @@ const Header = () => {
                     textDecoration: 'none', 
                     fontWeight: '600', 
                     marginLeft: '20px',
-                    fontSize: '15px'
+                    fontSize: '15px',
+                    whiteSpace: 'nowrap'
                 }}>
                     ☰ Каталог
                 </Link>
             </div>
             
+            {/* ЦЕНТР: Пошук */}
             <div className="search-container" ref={searchRef}>
                 <form className="search-bar-top" onSubmit={handleSearchSubmit}>
                     <input 
@@ -108,7 +110,6 @@ const Header = () => {
                     </button>
                 </form>
 
-                {/* --- ОНОВЛЕНИЙ БЛОК РЕЗУЛЬТАТІВ --- */}
                 {isSearchVisible && (
                     <div className="search-results-list" style={{ display: 'block', borderRadius: '12px', border: '1px solid #eee', overflow: 'hidden', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
                         {searchResults.length > 0 ? (
@@ -122,7 +123,6 @@ const Header = () => {
                                         </div>
                                     </Link>
                                 ))}
-                                {/* Кнопка "Показати всі" в самому низу списку */}
                                 <div 
                                     onClick={handleSearchSubmit}
                                     style={{ padding: '12px 15px', textAlign: 'center', backgroundColor: '#f9f9f9', borderTop: '1px solid #eee', cursor: 'pointer', color: 'var(--green)', fontSize: '13px', fontWeight: '500' }}
@@ -137,6 +137,7 @@ const Header = () => {
                 )}
             </div>
             
+            {/* ПРАВА ЧАСТИНА: Меню юзера */}
             <div className="mobile-menu-container">
                 <button 
                     className="burger-menu" 
@@ -146,27 +147,41 @@ const Header = () => {
                     <img src={isMenuOpen ? "/images/close.png" : "/images/menu.png"} alt="Menu" />
                 </button>
 
-                <nav className={`user-menu ${isMenuOpen ? 'is-active' : ''}`}>
+                <nav className={`user-menu ${isMenuOpen ? 'is-active' : ''}`} style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    
+                    {/* ПРОФІЛ / УВІЙТИ */}
                     {user ? (
-                        <>
-                            <Link to="/profile">
-                                <img src="/images/user.png" alt="User" /> {user.firstName}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <Link to="/profile" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', color: '#333', whiteSpace: 'nowrap' }}>
+                                <img src="/images/user.png" alt="User" style={{ width: '20px', marginRight: '5px' }} /> 
+                                {user.firstName}
                             </Link>
-                            <span 
-                                onClick={logout} 
-                                style={{ cursor: 'pointer', marginLeft: '15px', color: '#888', fontSize: '14px', alignSelf: 'center' }}
-                            >
+                            <span onClick={logout} style={{ cursor: 'pointer', color: '#888', fontSize: '13px', whiteSpace: 'nowrap' }}>
                                 Вийти
                             </span>
-                        </>
+                        </div>
                     ) : (
-                        <Link to="/auth">
-                            <img src="/images/user.png" alt="User" /> Увійти
+                        <Link to="/auth" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', color: '#333', whiteSpace: 'nowrap' }}>
+                            <img src="/images/user.png" alt="User" style={{ width: '20px', marginRight: '5px' }} /> 
+                            Увійти
                         </Link>
                     )}
 
-                    <Link to="/cart">
-                        <img src="/images/shopping-bag.png" alt="Cart" /> Кошик {cartCount > 0 && `(${cartCount})`}
+                    {/* ОБРАНЕ */}
+                    <Link to="/wishlist" style={{ position: 'relative', display: 'flex', alignItems: 'center', textDecoration: 'none', color: '#333', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontSize: '20px', marginRight: '5px' }}>♡</span> 
+                        {wishlist.length > 0 && (
+                            <span style={{ position: 'absolute', top: '-8px', left: '10px', background: 'var(--green)', color: 'white', fontSize: '10px', padding: '2px 5px', borderRadius: '10px', fontWeight: 'bold' }}>
+                                {wishlist.length}
+                            </span>
+                        )}
+                        Обране
+                    </Link>
+
+                    {/* КОШИК (Єдиний) */}
+                    <Link to="/cart" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none', color: '#333', whiteSpace: 'nowrap' }}>
+                        <img src="/images/shopping-bag.png" alt="Cart" style={{ width: '20px', marginRight: '5px' }} /> 
+                        Кошик {cartCount > 0 && <span style={{ marginLeft: '5px', fontWeight: 'bold', color: 'var(--green)' }}>({cartCount})</span>}
                     </Link>
                 </nav>
             </div>

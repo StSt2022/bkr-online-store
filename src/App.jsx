@@ -4,6 +4,8 @@ import { BrowserRouter, Routes, Route, Outlet } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Auth from './pages/Auth';
 import AIAssistant from './components/AIAssistant/AIAssistant';
+import { WishlistProvider } from './context/WishlistContext';
+import Wishlist from './pages/Wishlist';
 
 import Header from './components/Header/Header';
 import Footer from './components/Footer/Footer';
@@ -37,30 +39,33 @@ const MainLayout = () => {
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <ScrollToTop />
-        <AIAssistant />
-        
-        <Routes>
-          {/* 2. Ця сторінка стоїть ОКРЕМО, тому вона буде на весь екран без Хедера/Футера */}
-          <Route path="/thank-you" element={<ThankYou />} />
+      <WishlistProvider>
+        <BrowserRouter>
+          <ScrollToTop />
+          <AIAssistant />
+          
+          <Routes>
+            {/* 2. Ця сторінка стоїть ОКРЕМО, тому вона буде на весь екран без Хедера/Футера */}
+            <Route path="/thank-you" element={<ThankYou />} />
 
-          {/* 3. Всі інші сторінки загорнуті в MainLayout */}
-          <Route element={<MainLayout />}>
-            <Route path="/" element={<Home />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/catalog" element={<Catalog />} />
-            <Route path="/product/:id" element={<Product />} />
-            <Route path="/cart" element={<Cart />} />
-            <Route path="/checkout" element={<Checkout />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/search" element={<Search />} />
-            
-            <Route path="*" element={<div style={{padding: '40px', textAlign: 'center'}}><h1>404 - Сторінку не знайдено</h1></div>} />
-          </Route>
-        </Routes>
-        
-      </BrowserRouter>
+            {/* 3. Всі інші сторінки загорнуті в MainLayout */}
+            <Route element={<MainLayout />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/catalog" element={<Catalog />} />
+              <Route path="/product/:id" element={<Product />} />
+              <Route path="/cart" element={<Cart />} />
+              <Route path="/checkout" element={<Checkout />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/search" element={<Search />} />
+              <Route path="/wishlist" element={<Wishlist />} />
+              
+              <Route path="*" element={<div style={{padding: '40px', textAlign: 'center'}}><h1>404 - Сторінку не знайдено</h1></div>} />
+            </Route>
+          </Routes>
+          
+        </BrowserRouter>
+      </WishlistProvider>
     </AuthProvider>
   );
 }
