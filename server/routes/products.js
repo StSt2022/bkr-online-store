@@ -3,15 +3,26 @@ const express = require('express');
 const router = express.Router();
 const Product = require('../models/Product');
 
-// GET /api/products - Отримати всі товари АБО товари за списком ID
+// GET /api/products - Отримати всі товари АБО товари за списком ID АБО пошук
 router.get('/', async (req, res) => {
     try {
         let query = {};
-        // Якщо передали ?ids=1,2,3 - шукаємо тільки їх
+        
         if (req.query.ids) {
             const idsArray = req.query.ids.split(',').map(Number);
             query = { id: { $in: idsArray } };
+        } else if (req.query.search) {
+            // НОВЕ: Логіка для повної сторінки пошуку
+            const regex = new RegExp(req.query.search, 'i');
+            query = {
+                $or: [
+                    { name: { $regex: regex } },
+                    { brand: { $regex: regex } },
+                    { tags: { $in: [regex] } }
+                ]
+            };
         }
+        
         const products = await Product.find(query);
         res.json(products);
     } catch (error) {
@@ -134,6 +145,31 @@ router.get('/trending', async (req, res) => {
         });
     } catch (error) {
         res.status(500).json({ message: "Помилка отримання трендів" });
+    }
+});
+
+// GET /api/products/search?q=... - Швидкий пошук для автодоповнення
+router.get('/search', async (req, res) => {
+    try {
+        const query = req.query.q;
+        if (!query || query.length < 2) return res.json([]);
+
+        // Створюємо "регулярний вираз" (Regex), щоб шукати незалежно від регістру
+        const regex = new RegExp(query, 'i');
+
+        // Шукаємо в Монго: де назва АБО бренд АБО теги містять цей текст
+        const products = await Product.find({
+            $or: [
+                { name: { $regex: regex } },
+                { brand: { $regex: regex } },
+                { tags: { $in: [regex] } }
+            ]
+        }).limit(5).select('id name price image brand'); // Беремо тільки те, що треба для дропдауна
+
+        res.json(products);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Помилка пошуку" });
     }
 });
 

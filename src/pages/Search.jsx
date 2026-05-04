@@ -1,19 +1,31 @@
 // src/pages/Search.jsx
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { products } from '../data/mockData';
 import ProductCard from '../components/ProductCard/ProductCard';
 
 const Search = () => {
     const [searchParams] = useSearchParams();
     const query = searchParams.get('query') || '';
+    
+    const [results, setResults] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
 
-    // Шукаємо за назвою або описом (незалежно від регістру)
-    const lowerCaseQuery = query.toLowerCase();
-    const results = products.filter(product => 
-        product.name.toLowerCase().includes(lowerCaseQuery) ||
-        product.description.toLowerCase().includes(lowerCaseQuery)
-    );
+    useEffect(() => {
+        if (!query) return;
+        
+        setIsLoading(true);
+        // Звертаємось до нашого оновленого бекенду!
+        fetch(`http://localhost:3001/api/products?search=${encodeURIComponent(query)}`)
+            .then(res => res.json())
+            .then(data => {
+                setResults(data);
+                setIsLoading(false);
+            })
+            .catch(err => {
+                console.error(err);
+                setIsLoading(false);
+            });
+    }, [query]);
 
     return (
         <div className="catalog-main" style={{ padding: '40px' }}>
@@ -25,15 +37,19 @@ const Search = () => {
                 )}
             </h1>
 
-            <div className="product-grid">
-                {results.length > 0 ? (
-                    results.map(product => (
-                        <ProductCard key={product.id} product={product} />
-                    ))
-                ) : (
-                    <p style={{ gridColumn: '1 / -1' }}>На жаль, за вашим запитом "{query}" нічого не знайдено.</p>
-                )}
-            </div>
+            {isLoading ? (
+                <p>Шукаємо товари...</p>
+            ) : (
+                <div className="product-grid">
+                    {results.length > 0 ? (
+                        results.map(product => (
+                            <ProductCard key={product.id} product={product} />
+                        ))
+                    ) : (
+                        <p style={{ gridColumn: '1 / -1' }}>На жаль, за вашим запитом "{query}" нічого не знайдено.</p>
+                    )}
+                </div>
+            )}
         </div>
     );
 };

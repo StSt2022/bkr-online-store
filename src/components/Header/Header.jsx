@@ -47,17 +47,23 @@ const Header = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const handleSearchInput = (e) => {
+    const handleSearchInput = async (e) => {
         const query = e.target.value;
         setSearchQuery(query);
+
         if (query.trim().length >= 2) {
-            const results = products.filter(product =>
-                product.name.toLowerCase().includes(query.trim().toLowerCase())
-            );
-            setSearchResults(results);
             setIsSearchVisible(true);
+            try {
+                // Замість локального фільтра - робимо запит до Монго!
+                const res = await fetch(`http://localhost:3001/api/products/search?q=${encodeURIComponent(query.trim())}`);
+                const data = await res.json();
+                setSearchResults(data);
+            } catch (error) {
+                console.error("Помилка пошуку", error);
+            }
         } else {
             setIsSearchVisible(false);
+            setSearchResults([]);
         }
     };
 
@@ -102,20 +108,30 @@ const Header = () => {
                     </button>
                 </form>
 
+                {/* --- ОНОВЛЕНИЙ БЛОК РЕЗУЛЬТАТІВ --- */}
                 {isSearchVisible && (
-                    <div className="search-results-list" style={{ display: 'block' }}>
+                    <div className="search-results-list" style={{ display: 'block', borderRadius: '12px', border: '1px solid #eee', overflow: 'hidden', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
                         {searchResults.length > 0 ? (
-                            searchResults.slice(0, 5).map(product => (
-                                <Link to={`/product/${product.id}`} className="search-result-item" key={product.id}>
-                                    <img src={`/${product.image}`} alt={product.name} className="search-result-image" />
-                                    <div className="search-result-info">
-                                        <span className="search-result-name">{product.name}</span>
-                                        <span className="search-result-price">{product.price} грн</span>
-                                    </div>
-                                </Link>
-                            ))
+                            <>
+                                {searchResults.map(product => (
+                                    <Link to={`/product/${product.id}`} className="search-result-item" key={product.id} onClick={() => setIsSearchVisible(false)}>
+                                        <img src={`/${product.image}`} alt={product.name} className="search-result-image" style={{ borderRadius: '6px' }} />
+                                        <div className="search-result-info">
+                                            <span className="search-result-name" style={{ fontSize: '14px', color: '#333' }}>{product.name}</span>
+                                            <span className="search-result-price" style={{ color: 'var(--green-dark)', fontWeight: '500' }}>{product.price} грн</span>
+                                        </div>
+                                    </Link>
+                                ))}
+                                {/* Кнопка "Показати всі" в самому низу списку */}
+                                <div 
+                                    onClick={handleSearchSubmit}
+                                    style={{ padding: '12px 15px', textAlign: 'center', backgroundColor: '#f9f9f9', borderTop: '1px solid #eee', cursor: 'pointer', color: 'var(--green)', fontSize: '13px', fontWeight: '500' }}
+                                >
+                                    🔍 Показати всі результати для "{searchQuery}"
+                                </div>
+                            </>
                         ) : (
-                            <div className="search-no-results">Нічого не знайдено</div>
+                            <div className="search-no-results" style={{ padding: '20px', color: '#888' }}>Нічого не знайдено</div>
                         )}
                     </div>
                 )}
@@ -131,7 +147,6 @@ const Header = () => {
                 </button>
 
                 <nav className={`user-menu ${isMenuOpen ? 'is-active' : ''}`}>
-                    {/* 2. НОВА ЛОГІКА ДЛЯ ПРОФІЛЮ / ВХОДУ */}
                     {user ? (
                         <>
                             <Link to="/profile">
