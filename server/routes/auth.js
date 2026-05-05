@@ -4,6 +4,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const authMiddleware = require('../middleware/authMiddleware');
 
 // --- РЕЄСТРАЦІЯ ---
 router.post('/register', async (req, res) => {
@@ -75,7 +76,7 @@ router.post('/login', async (req, res) => {
 
         res.json({
             token,
-            user: { id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email }
+            user: { id: user._id, firstName: user.firstName, lastName: user.lastName, email: user.email, isAdmin: user.isAdmin || false }
         });
 
     } catch (error) {
@@ -84,12 +85,9 @@ router.post('/login', async (req, res) => {
     }
 });
 
-// --- Отримати дані поточного юзера (Захищений роут) ---
-const authMiddleware = require('../middleware/authMiddleware');
-
 router.get('/me', authMiddleware, async (req, res) => {
     try {
-        const user = await User.findById(req.user.id).select('-passwordHash'); // Не віддаємо пароль
+        const user = await User.findById(req.user.id).select('-passwordHash'); 
         res.json(user);
     } catch (error) {
         res.status(500).json({ message: "Помилка сервера" });

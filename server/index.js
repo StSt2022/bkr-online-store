@@ -38,6 +38,9 @@ app.use('/api/assistant', assistantRoutes);
 const taskRoutes = require('./routes/tasks');
 app.use('/api/tasks', taskRoutes);
 
+const adminRoutes = require('./routes/admin');
+app.use('/api/admin', adminRoutes);
+
 // Запуск сервера
 app.listen(PORT, () => {
     console.log(`🚀 Сервер запущено на порту ${PORT}`);

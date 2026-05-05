@@ -25,6 +25,7 @@ const userSchema = new mongoose.Schema({
   }],
 
   viewedProducts: [mongoose.Schema.Types.ObjectId],  
+  isAdmin: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now }
 });
 

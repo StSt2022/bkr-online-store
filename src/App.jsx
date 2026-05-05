@@ -6,6 +6,7 @@ import Auth from './pages/Auth';
 import AIAssistant from './components/AIAssistant/AIAssistant';
 import { WishlistProvider } from './context/WishlistContext';
 import Wishlist from './pages/Wishlist';
+import Admin from './pages/Admin';
 
 import Header from './components/Header/Header';
 import Footer from './components/Footer/Footer';
@@ -59,6 +60,7 @@ function App() {
               <Route path="/profile" element={<Profile />} />
               <Route path="/search" element={<Search />} />
               <Route path="/wishlist" element={<Wishlist />} />
+              <Route path="/admin" element={<Admin />} />
               
               <Route path="*" element={<div style={{padding: '40px', textAlign: 'center'}}><h1>404 - Сторінку не знайдено</h1></div>} />
             </Route>
